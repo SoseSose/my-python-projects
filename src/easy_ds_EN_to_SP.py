@@ -1,7 +1,7 @@
 # %%
 from datasets import Dataset
 from torch.utils.data import DataLoader
-from transformers import  PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizerBase
 from lightning import LightningDataModule
 
 INSTRUCTION_TEMPLATE_BASE = "\n\n### Human:"
@@ -12,7 +12,7 @@ SPANISH_WORDS = ["perro", "agua", "madre", "hola", "árbol"]
 
 def easy_ds():
     origin_str = [
-        f'\n\n### Human: How do you say "{Eng}" in Spanish?\n\n### Assistant: {Spa}'
+        f'{INSTRUCTION_TEMPLATE_BASE} How do you say "{Eng}" in Spanish?\n\n{RESPONSE_TEMPLATE_BASE} {Spa}'
         for Eng, Spa in zip(ENGLISH_WORDS, SPANISH_WORDS)
     ]
 
@@ -22,25 +22,35 @@ def easy_ds():
     return Dataset.from_dict(train_data)
 
 
+def test_easy_ds():
+    ds = easy_ds()
+    for i in ds:
+        assert i["text"] == '\n\n### Human: How do you say "dog" in Spanish?\n\n### Assistant: perro'
+        break
+
+
+
 def add_special_tokens(
     example: dict,
     tokenizer: PreTrainedTokenizerBase,
 ) -> dict:
-    # add eos_token before human text and bos_token before assistant text
-    example["text"] = (
-        example["text"]
-        .replace(
-            INSTRUCTION_TEMPLATE_BASE, tokenizer.eos_token + INSTRUCTION_TEMPLATE_BASE
-        )
-        .replace(RESPONSE_TEMPLATE_BASE, RESPONSE_TEMPLATE_BASE + tokenizer.bos_token)
-    )
-    if not example["text"].endswith(tokenizer.eos_token):
-        example["text"] += tokenizer.eos_token
-    # Remove leading EOS tokens
-    while example["text"].startswith(tokenizer.eos_token):
-        example["text"] = example["text"][len(tokenizer.eos_token) :]
+    text = example["text"]  
 
-    return example
+    text = text.replace(
+        INSTRUCTION_TEMPLATE_BASE, tokenizer.eos_token + INSTRUCTION_TEMPLATE_BASE
+        )
+    text = text.replace(
+        RESPONSE_TEMPLATE_BASE,
+        RESPONSE_TEMPLATE_BASE + tokenizer.bos_token
+        )
+
+    if not text.endswith(tokenizer.eos_token):
+        text += tokenizer.eos_token
+    # Remove leading EOS tokens
+    while text.startswith(tokenizer.eos_token):
+        text = text[len(tokenizer.eos_token) :]
+
+    return {"text": text}
 
 
 def add_special_tokens_to_ds(ds, tokenizer):
@@ -48,12 +58,15 @@ def add_special_tokens_to_ds(ds, tokenizer):
 
 
 def tokenized_ds(ds, tokenizer):
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     return ds.map(
         lambda example: tokenizer(example["text"], padding=True),
         batched=True,
         remove_columns=["text"],
         #! padding=Trueを追加している.
     )
+
 
 def add_labels_to_ds(ds):
     return ds.map(lambda x: {"labels": x["input_ids"]}, batched=True)
@@ -91,7 +104,7 @@ def masked_ds(ds, tokenizer):
     ds = ds.map(lambda x: create_special_mask(tokenizer, x))
     ds.set_format(
         type="torch", columns=["input_ids", "attention_mask", "labels"]
-    ) # convert dataset from lists to torch tensors
+    )  # convert dataset from lists to torch tensors
     return ds
 
 
@@ -102,6 +115,20 @@ def get_masked_ds(tokenizer):
     ds = add_labels_to_ds(ds)
     ds = masked_ds(ds, tokenizer)
     return ds
+
+if __name__ == "__main__":
+    from transformers import AutoTokenizer 
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    ds = get_masked_ds(tokenizer)
+    tokenizer.pad_token = "<pad>"
+    tokenizer.pad_token_id = -100
+    for i in ds:
+        # print(i)
+        print(tokenizer.decode(i["input_ids"]))
+        print(tokenizer.decode(i["labels"]))
+        print(tokenizer.decode(i["attention_mask"]))
+        break
+#%%
 
 
 class EasyEnToSpDM(LightningDataModule):
