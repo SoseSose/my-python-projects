@@ -96,17 +96,17 @@ class Bloom560m(LightningModule):
         self.log("test_loss", model_answer_logits.loss)
 
         label = batch["input_ids"][:, -2]
-        question = batch["input_ids"][:, :-2]
         input = self.tokenizer.batch_decode(batch["input_ids"])[0]
         # label_str = self.tokenizer.batch_decode(label)
-        bos_point = input.find(self.tokenizer.bos_token)
-        eos_point = input.find(self.tokenizer.eos_token)
+        bos_point = input.find(self.tokenizer.bos_token_id)
+        eos_point = input.find(self.tokenizer.eos_token_id)
         label = input[bos_point+1:eos_point]
 
+        question = batch["input_ids"][:, :-2]
         output = self.model.generate(question, max_length=100)
         gen_text = self.tokenizer.batch_decode(output)[0]
-        bos_point = gen_text.find(self.tokenizer.bos_token)
-        eos_point = gen_text.find(self.tokenizer.eos_token)
+        bos_point = gen_text.find(self.tokenizer.bos_token_id)
+        eos_point = gen_text.find(self.tokenizer.eos_token_id)
         ans = gen_text[bos_point+1:eos_point]
 
         self.log("test_acc", int(label == ans),on_epoch=True, reduce_fx="sum")
