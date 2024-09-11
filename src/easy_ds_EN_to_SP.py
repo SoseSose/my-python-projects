@@ -25,24 +25,25 @@ def easy_ds():
 def test_easy_ds():
     ds = easy_ds()
     for i in ds:
-        assert i["text"] == '\n\n### Human: How do you say "dog" in Spanish?\n\n### Assistant: perro'
+        assert (
+            i["text"]
+            == '\n\n### Human: How do you say "dog" in Spanish?\n\n### Assistant: perro'
+        )
         break
-
 
 
 def add_special_tokens(
     example: dict,
     tokenizer: PreTrainedTokenizerBase,
 ) -> dict:
-    text = example["text"]  
+    text = example["text"]
 
     text = text.replace(
         INSTRUCTION_TEMPLATE_BASE, tokenizer.eos_token + INSTRUCTION_TEMPLATE_BASE
-        )
+    )
     text = text.replace(
-        RESPONSE_TEMPLATE_BASE,
-        RESPONSE_TEMPLATE_BASE + tokenizer.bos_token
-        )
+        RESPONSE_TEMPLATE_BASE, RESPONSE_TEMPLATE_BASE + tokenizer.bos_token
+    )
 
     if not text.endswith(tokenizer.eos_token):
         text += tokenizer.eos_token
@@ -116,19 +117,27 @@ def get_masked_ds(tokenizer):
     ds = masked_ds(ds, tokenizer)
     return ds
 
+
 if __name__ == "__main__":
-    from transformers import AutoTokenizer 
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-560m")
+    print(tokenizer.special_tokens_map)
+    tokenizer.add_special_tokens({"mask_token": "<mask>"})
+    print(tokenizer.mask_token)
+    print(tokenizer.mask_token_id)
+    # %%
     ds = get_masked_ds(tokenizer)
-    tokenizer.pad_token = "<pad>"
-    tokenizer.pad_token_id = -100
+    # tokenizer.pad_token = "<pad>"
+    # tokenizer.pad_token_id = -100
     for i in ds:
-        # print(i)
+        print(i["input_ids"])
         print(tokenizer.decode(i["input_ids"]))
-        print(tokenizer.decode(i["labels"]))
-        print(tokenizer.decode(i["attention_mask"]))
-        break
-#%%
+        print(i["labels"])
+        print(i["attention_mask"])
+        # print(tokenizer.decode(i["labels"]))
+        # print(tokenizer.decode(i["attention_mask"]))
+# %%
 
 
 class EasyEnToSpDM(LightningDataModule):
@@ -159,3 +168,44 @@ class EasyEnToSpDM(LightningDataModule):
 
     def predict_dataloader(self):
         return self.dl
+
+
+import random
+
+
+def mask_tokens(
+    text: list[int],
+    tokenizer: PreTrainedTokenizerBase,
+    prob: float = 0.15,
+    not_learn_id: int = -100,
+) -> tuple[list[int], list[int]]:
+    if tokenizer.bos_token_id is None:
+        raise ValueError("tokenizerにbos_token_idが設定されていません。")
+    if tokenizer.eos_token_id is None:
+        raise ValueError("tokenizerにeos_token_idが設定されていません。")
+    if tokenizer.mask_token_id is None:
+        raise ValueError("tokenizerにmask_token_idが設定されていません。")
+
+    if not (0 <= prob <= 1):
+        raise ValueError("probは0以上1以下でなければなりません。")
+
+    masked_text = []
+    labels = []
+
+    in_sequence = False
+
+    for token in text:
+        if token == tokenizer.bos_token_id:
+            in_sequence = True
+
+        if in_sequence and random.random() < prob:
+            masked_text.append(tokenizer.mask_token_id)
+            labels.append(token)
+        else:
+            masked_text.append(token)
+            labels.append(not_learn_id)
+
+        if token == tokenizer.eos_token_id:
+            in_sequence = False
+
+    return masked_text, labels
