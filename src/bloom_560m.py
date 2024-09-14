@@ -18,7 +18,7 @@ MODEL_NAME = "bigscience/bloom-560m"
 @dataclass
 class Bloom560m_tokenizer_params:
     trust_remote_code: bool = False
-    padding_side: str = "right"
+    padding_side: str = "left" #マスク言語モデルなら左に
 
 
 def get_bloom560m_tokenizer(save_dir: str) -> AutoTokenizer:
@@ -37,7 +37,6 @@ def get_bloom560m_tokenizer(save_dir: str) -> AutoTokenizer:
         tokenizer.save_pretrained(tokenizer_save_path)
 
     return tokenizer
-
 
 
 @dataclass
@@ -85,6 +84,7 @@ class Bloom560m(LightningModule):
             on_epoch=True,
             prog_bar=True,
         )
+        
         return model_answer_logits.loss
 
     def validation_step(self, batch, batch_idx):
@@ -95,22 +95,23 @@ class Bloom560m(LightningModule):
         model_answer_logits = self.model.forward(**batch)
         self.log("test_loss", model_answer_logits.loss)
 
-        label = batch["input_ids"][:, -2]
-        input = self.tokenizer.batch_decode(batch["input_ids"])[0]
-        # label_str = self.tokenizer.batch_decode(label)
-        bos_point = input.find(self.tokenizer.bos_token_id)
-        eos_point = input.find(self.tokenizer.eos_token_id)
-        label = input[bos_point+1:eos_point]
+        predictions = torch.argmax(model_answer_logits.logits, dim=-1)
 
-        question = batch["input_ids"][:, :-2]
-        output = self.model.generate(question, max_length=100)
-        gen_text = self.tokenizer.batch_decode(output)[0]
-        bos_point = gen_text.find(self.tokenizer.bos_token_id)
-        eos_point = gen_text.find(self.tokenizer.eos_token_id)
-        ans = gen_text[bos_point+1:eos_point]
+        not_mask_positions = batch["input_ids"] != self.tokenizer.mask_token_id
 
-        self.log("test_acc", int(label == ans),on_epoch=True, reduce_fx="sum")
+        #maskされていない部分のみで正解率を計算するため、mask_positionsが1のときのみpredictionsとbatch["labels"]を比較する
+        predicted_labels = predictions[not_mask_positions]
+        true_labels = batch["labels"][not_mask_positions]
 
+        correct_predictions = (predicted_labels == true_labels).sum().item()
+        total_predictions = not_mask_positions.sum().item()
+        accuracy = (
+            correct_predictions / total_predictions if total_predictions > 0 else 0
+        )
+
+        self.log("test_acc", accuracy, on_epoch=True, prog_bar=True)
+
+        return {"test_loss": model_answer_logits.loss, "test_acc": accuracy}
 
     def predict_step(self, batch, batch_idx):
         label = batch["input_ids"][:, -2]
@@ -120,7 +121,7 @@ class Bloom560m(LightningModule):
 
         output = self.model.generate(question, max_length=100)
         gen_text = self.tokenizer.batch_decode(output)
-        return {"question":question_str, "gen_text": gen_text, "label": label_str}
+        return {"question": question_str, "gen_text": gen_text, "label": label_str}
 
     def configure_optimizers(self) -> Optimizer:
         oprimizer = SGD(

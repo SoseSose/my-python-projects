@@ -60,23 +60,30 @@ def mask_data_collater(
 
     masked_text = []
     labels = []
-
     in_sequence = False
+    mask_applied = False  
 
     for token in text_ids:
-        if token == tokenizer.eos_token_id:
-            in_sequence = False
-
         if in_sequence and random.random() < prob:
             masked_text.append(tokenizer.mask_token_id)
             labels.append(token)
+            mask_applied = True  
         else:
             masked_text.append(token)
             labels.append(not_learn_id)
 
-        # もしbos_token_idがある場合は、そのあとからはin_sequence=Trueとする
         if token == tokenizer.bos_token_id:
             in_sequence = True
+
+        if token == tokenizer.eos_token_id:
+            in_sequence = False
+
+    if not mask_applied:
+        for i, token in enumerate(text_ids):
+            if text_ids[i] != tokenizer.bos_token_id and text_ids[i] != tokenizer.eos_token_id:
+                masked_text[i] = tokenizer.mask_token_id
+                labels[i] = text_ids[i]
+                break
 
     return masked_text, labels
 
@@ -104,10 +111,11 @@ class TranslationDataset(Dataset):
             max_length=16,  # batch中でサイズをそろえるようにとりあえずmax_lengthを指定,batch_encodeを使ったほうがよさそうではあるけど動作しているうちは直さない、https://huggingface.co/docs/transformers/pad_truncation
             return_attention_mask=True,
             # return_tensors="np"
+            
         )
 
         masked_text, labels = mask_data_collater(
-            list(encoded_text["input_ids"]), self.tokenizer, prob=1.0
+            list(encoded_text["input_ids"]), self.tokenizer, prob=1
         )
 
         return {
@@ -160,10 +168,9 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-560m")
     dataloader = get_translation_dataloader(tokenizer, batch_size=2)
     for data in dataloader:
-        # print("a")
-        # print(data)
         print(data["input_ids"].shape)
         print(data["labels"].shape)
         print(data["attention_mask"].shape)
         print(tokenizer.batch_decode(data["input_ids"]))
+        data["labels"][data["labels"] == -100] = tokenizer.encode("No")[0]
         print(tokenizer.batch_decode(data["labels"]))

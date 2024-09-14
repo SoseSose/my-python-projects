@@ -14,7 +14,7 @@ def get_trainer():
     early_stopping = EarlyStopping(
         monitor="val_loss",
         min_delta=0.03,
-        patience=10,
+        patience=5,
         verbose=True,
         mode="min",
     )
