@@ -514,7 +514,7 @@ class ArcTaskSet:
         for task_file in Path(data_path).glob("*.json"):
             with task_file.open() as f:
                 task = json.load(f)
-                tasks.append(self._task_json_to_arc_task(task, task["name"]))
+                tasks.append(self._task_json_to_arc_task(task, task_file.stem))
 
         return tasks
 

@@ -19,12 +19,6 @@ def get_trainer():
         mode="min",
     )
 
-    logger = MLFlowLogger(
-        experiment_name="bloom560m_easyEN2SP",
-        run_name="mlflowlogger-check-run",
-        tracking_uri="sqlite:///result/mlruns.db",
-    )
-
     trainer = Trainer(
         callbacks=[early_stopping],
         logger=False,  # ログにはMLflowを使用するためFalse
@@ -53,7 +47,9 @@ class MLFlowExperimentManager:
 
     def _setup_tracking_sql(self):
         db_path = Path(self.TRACKING_SQL_PATH)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
+        if not db_path.parent.exists():
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            print("make db_path")
         sqlite3.connect(db_path)
         mlflow.set_tracking_uri(f"sqlite:///{self.TRACKING_SQL_PATH}")
 
