@@ -26,8 +26,6 @@ def get_mlflow_logger(artifact_dir:str):
         artifact_dir=artifact_dir,
     )
 
-    #システムメトリックが取れなくなっている。取る時はtest_step中にnvmlを使って取るようにするとか
-
     return mlf_logger
 
 
