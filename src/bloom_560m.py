@@ -18,7 +18,7 @@ MODEL_NAME = "bigscience/bloom-560m"
 @dataclass
 class Bloom560m_tokenizer_params:
     trust_remote_code: bool = False
-    padding_side: str = "left" #マスク言語モデルなら左に
+    padding_side: str = "left"  # マスク言語モデルなら左に
 
 
 def get_bloom560m_tokenizer(save_dir: str) -> AutoTokenizer:
@@ -91,7 +91,7 @@ class Bloom560m(LightningModule):
             on_epoch=True,
             prog_bar=True,
         )
-        
+
         return train_loss
 
     def validation_step(self, batch, batch_idx):
@@ -106,7 +106,7 @@ class Bloom560m(LightningModule):
 
         not_mask_positions = batch["input_ids"] != self.tokenizer.mask_token_id
 
-        #maskされていない部分のみで正解率を計算するため、mask_positionsが1のときのみpredictionsとbatch["labels"]を比較する
+        # maskされていない部分のみで正解率を計算するため、mask_positionsが1のときのみpredictionsとbatch["labels"]を比較する
         predicted_labels = predictions[not_mask_positions]
         true_labels = batch["labels"][not_mask_positions]
 

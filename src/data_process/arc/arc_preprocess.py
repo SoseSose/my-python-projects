@@ -613,8 +613,9 @@ def mask_single_token_collater(
 
 
 class ArcTaskDataset(torch.utils.data.Dataset):
-
-    def tokenizer_settings(self, tokenizer: PreTrainedTokenizerBase) -> PreTrainedTokenizerBase:
+    def tokenizer_settings(
+        self, tokenizer: PreTrainedTokenizerBase
+    ) -> PreTrainedTokenizerBase:
         tokenizer.add_special_tokens(
             {
                 "bos_token": "<s>",
@@ -628,7 +629,6 @@ class ArcTaskDataset(torch.utils.data.Dataset):
     def __init__(self, tokenizer: PreTrainedTokenizerBase, data_path: str):
         self.tokenizer = self.tokenizer_settings(tokenizer)
         self.tasks = ArcTaskSet().path_to_arc_task(data_path)
-
 
     def __len__(self):
         return len(self.tasks)
@@ -646,7 +646,6 @@ class ArcTaskDataset(torch.utils.data.Dataset):
             max_length=100,  # batch中でサイズをそろえるようにとりあえずmax_lengthを指定,batch_encodeを使ったほうがよさそうではあるけど動作しているうちは直さない、https://huggingface.co/docs/transformers/pad_truncation
             return_attention_mask=True,
             # return_tensors="np"
-
         )
 
         masked_text, labels = mask_single_token_collater(
@@ -662,7 +661,10 @@ class ArcTaskDataset(torch.utils.data.Dataset):
 
 
 def get_arc_dataloader(
-    tokenizer: PreTrainedTokenizerBase, data_path: str, batch_size=1, shuffle=False, 
+    tokenizer: PreTrainedTokenizerBase,
+    data_path: str,
+    batch_size=1,
+    shuffle=False,
 ):
     dataset = ArcTaskDataset(tokenizer, data_path)
     dataloader = DataLoader(
@@ -671,14 +673,14 @@ def get_arc_dataloader(
     return dataloader
 
 
-
 class ArcTaskDataModule(L.LightningDataModule):
-
-    def __init__(self, tokenizer: PreTrainedTokenizerBase, batch_size: int, data_path: str):
+    def __init__(
+        self, tokenizer: PreTrainedTokenizerBase, batch_size: int, data_path: str
+    ):
         super().__init__()
         self.tokenizer = tokenizer
         self.batch_size = batch_size
-        self.data_path = data_path  
+        self.data_path = data_path
 
     def prepare_data(self):
         pass
@@ -686,8 +688,7 @@ class ArcTaskDataModule(L.LightningDataModule):
     def setup(self, stage: str):
         self.dl = get_arc_dataloader(
             self.tokenizer,
-            self.data_path,  
-
+            self.data_path,
             batch_size=self.batch_size,
             shuffle=True,
         )

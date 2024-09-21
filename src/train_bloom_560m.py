@@ -1,27 +1,26 @@
 import shutil
 from pathlib import Path
 
-from bloom560m_easyEN2SP import MLFlowExperimentManager, get_trainer
+from bloom560m_easyEN2SP import  get_trainer
 from bloom_560m import Bloom560m
-from data_process.arc.arc_preprocess import ArcTaskDataModule, ArcTaskDataset
+from data_process.arc.arc_preprocess import ArcTaskDataModule
 from masked_easy_ds_EN_to_SP import MaskedEasyEnToSpDM
 from util.utils import ini_setting
 
 
 def run_training():
-    model = Bloom560m("C:/Users/音声入力用アカウント/Documents/models", lr=0.0001)
+    model = Bloom560m("C:/Users/音声入力用アカウント/Documents/models", lr=0.001)
 
     train_data_module = MaskedEasyEnToSpDM(tokenizer=model.tokenizer, batch_size=5)
-    # test_data_module = MaskedEasyEnToSpDM(tokenizer=model.tokenizer, batch_size=1)
+    trainer = get_trainer()
+    print("start training")
+    trainer.fit(model=model, datamodule=train_data_module)
+
     test_data_module = ArcTaskDataModule(
         tokenizer=model.tokenizer,
         data_path="dataset/Selective-Arc/original_arc/training",
         batch_size=16,
     )
-    trainer = get_trainer()
-    print("start training")
-
-    trainer.fit(model=model, datamodule=train_data_module)
     trainer.test(model=model, datamodule=test_data_module)
 
     # 勝手にmlrunsディレクトリが作成されて邪魔なため削除する
