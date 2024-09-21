@@ -4,12 +4,15 @@ from dataclasses import dataclass
 from pathlib import Path
 import textwrap
 from typing import List, Union
+import random
 
 import numpy as np
 import numpy.typing as npt
 import pytest
 import lightning as L
+import torch
 from torch.utils.data import DataLoader
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from data_process.arc.const import ArcConst
 
@@ -18,6 +21,7 @@ MAX_COLOR_NUM = ArcConst().MAX_COLOR_NUM
 MAX_SIZE = ArcConst().MAX_IMG_SIZE
 VR_DELIM = ""
 HR_DELIM = "\n"
+
 
 class ArcImage:
     """
@@ -120,7 +124,11 @@ class ArcImage:
 
 class TestArcImage:
     def get_test_image(self) -> List[List[int]]:
-        return [[i for i in range(ArcConst().MIN_COLOR_NUM,ArcConst().MAX_COLOR_NUM+1)] for _ in range(6)]
+        return [
+            [i for i in range(ArcConst().MIN_COLOR_NUM, ArcConst().MAX_COLOR_NUM + 1)]
+            for _ in range(6)
+        ]
+
     def test_init_normal(self):
         test_image = self.get_test_image()
         arc_image = ArcImage(test_image)
@@ -167,13 +175,13 @@ class TestArcImage:
         test_image = [[1, 2], [3, 4]]
         arc_image = ArcImage(test_image)
         assert str(arc_image) == "12\n34"
-    
+
     def test_ArcImage_equivarent_return_True(self):
         test_image = [[1, 2], [3, 4]]
         arc_image = ArcImage(test_image)
         arc_image2 = ArcImage(test_image)
         assert arc_image == arc_image2
-    
+
     def test_ArcImage_unequivarent_return_False(self):
         arc_image = ArcImage([[1, 2], [3, 4]])
         arc_image2 = ArcImage([[1, 2], [3, 5]])
@@ -181,7 +189,7 @@ class TestArcImage:
 
     def test_ArcImage_eq_not_same_shape_return_False(self):
         arc_image = ArcImage([[1, 2], [3, 4]])
-        arc_image2 = ArcImage([[1, 2, 2], [3, 4,4]])
+        arc_image2 = ArcImage([[1, 2, 2], [3, 4, 4]])
         assert arc_image != arc_image2
 
 
@@ -197,28 +205,33 @@ class ArcInout:
     def __eq__(self, other: "ArcInout") -> bool:
         return self.input == other.input and self.output == other.output
 
+
 def test_Arc_inout_input_not_same_return_false():
-    test_image = [[1,2], [3,4]]
+    test_image = [[1, 2], [3, 4]]
     arc_inout = ArcInout(ArcImage(test_image), ArcImage(test_image))
-    arc_inout2 = ArcInout(ArcImage([[1,2],[3, 5]]), ArcImage(test_image))
+    arc_inout2 = ArcInout(ArcImage([[1, 2], [3, 5]]), ArcImage(test_image))
 
     assert arc_inout != arc_inout2
+
 
 def test_Arc_inout_output_not_same_return_false():
-    test_image = [[1,2], [3,4]]
+    test_image = [[1, 2], [3, 4]]
     arc_inout = ArcInout(ArcImage(test_image), ArcImage(test_image))
-    arc_inout2 = ArcInout(ArcImage([[1,2],[3, 5]]), ArcImage(test_image))
+    arc_inout2 = ArcInout(ArcImage([[1, 2], [3, 5]]), ArcImage(test_image))
     assert arc_inout != arc_inout2
 
+
 def test_Arc_inout_input_same_return_true():
-    test_image = [[1,2], [3,4]]
+    test_image = [[1, 2], [3, 4]]
     arc_inout = ArcInout(ArcImage(test_image), ArcImage(test_image))
     arc_inout2 = ArcInout(ArcImage(test_image), ArcImage(test_image))
 
     assert arc_inout == arc_inout2
 
+
 TRAIN_NAME = "train"
 TEST_NAME = "test"
+
 
 @dataclass
 class ArcTask:
@@ -290,21 +303,21 @@ class ArcTask:
             rslt += f"\n{self.test_output}"
 
         return rslt
-    
+
     @property
     def question(self) -> str:
         return self.to_str()
-    
+
     def __str__(self) -> str:
         return self.to_str()
 
     def __eq__(self, other: "ArcTask") -> bool:
-        
         return (
             self.train == other.train
             and self.test == other.test
             and self.candidate == other.candidate
         )
+
 
 class TestArcTask:
     def test_train_inputs(self):
@@ -428,6 +441,7 @@ def test_ArcTask_eq_not_same_train_return_False():
     )
     assert arc_task != arc_task2
 
+
 def test_ArcTask_eq_not_same_test_return_False():
     test_image = [[1, 2], [3, 4]]
     arc_image = ArcImage(test_image)
@@ -445,6 +459,7 @@ def test_ArcTask_eq_not_same_test_return_False():
     )
     assert arc_task != arc_task2
 
+
 def test_ArcTask_eq_not_same_candidate_return_False():
     test_image = [[1, 2], [3, 4]]
     arc_image = ArcImage(test_image)
@@ -460,6 +475,7 @@ def test_ArcTask_eq_not_same_candidate_return_False():
         candidate=[ArcImage([[1, 2], [3, 5]])],
     )
     assert arc_task != arc_task2
+
 
 class ArcTaskSet:
     """
@@ -541,35 +557,146 @@ class TestArcTaskSet:
         arc_task_set = ArcTaskSet()
         _ = arc_task_set.path_to_arc_task("data/training")
 
+
+def tokenizer_settings(tokenizer: PreTrainedTokenizerBase) -> PreTrainedTokenizerBase:
+    tokenizer.add_special_tokens(
+        {
+            "bos_token": "<s>",
+            "eos_token": "</s>",
+            "mask_token": "<mask>",
+            "pad_token": "<pad>",
+        }
+    )
+    return tokenizer
+
+
+def wrap_with_special_tokens(
+    text: str,
+    tokenizer: PreTrainedTokenizerBase,
+) -> str:
+    return tokenizer.bos_token + text + tokenizer.eos_token
+
+
+def mask_single_token_collater(
+    text_ids: list[int],
+    tokenizer: PreTrainedTokenizerBase,
+    not_learn_id: int = -100,
+) -> tuple[list[int], list[int]]:
+    """
+    トークナイズされたテキストのリストを受け取り、bos_tokenからeos_tokenまでの間の一つだけのトークンをマスクします。
+
+    Args:
+        text_ids (list[int]): トークン化されたテキストのIDリスト。
+        tokenizer (PreTrainedTokenizerBase): トークナイザーオブジェクト。
+        not_learn_id (int, optional): マスクされていないトークンのラベル。デフォルトは-100。
+
+    Raises:
+        ValueError: tokenizerにbos_token_id, eos_token_id, またはmask_token_idが設定されていない場合。
+
+    Returns:
+        tuple[list[int], list[int]]: マスクされたテキストIDのリストと、対応するラベルのリスト。
+    """
+    if tokenizer.bos_token_id is None:
+        raise ValueError("tokenizerにbos_token_idが設定されていません。")
+    if tokenizer.eos_token_id is None:
+        raise ValueError("tokenizerにeos_token_idが設定されていません。")
+    if tokenizer.mask_token_id is None:
+        raise ValueError("tokenizerにmask_token_idが設定されていません。")
+
+    masked_text = text_ids[:]
+    labels = [not_learn_id] * len(text_ids)
+    in_sequence = False
+    maskable_indices = []
+
+    for i, token in enumerate(text_ids):
+        if token == tokenizer.bos_token_id:
+            in_sequence = True
+        else:
+            if in_sequence:
+                maskable_indices.append(i)
+            if token == tokenizer.eos_token_id:
+                in_sequence = False
+
+    if maskable_indices:
+        mask_index = random.choice(maskable_indices)
+        masked_text[mask_index] = tokenizer.mask_token_id
+        labels[mask_index] = text_ids[mask_index]
+
+    return masked_text, labels
+
+
+class ArcTaskDataset(torch.utils.data.Dataset):
+    def __init__(self, tokenizer: PreTrainedTokenizerBase, data_path: str):
+        self.tokenizer = tokenizer_settings(tokenizer)
+        self.tasks = ArcTaskSet().path_to_arc_task(data_path)
+
+    def __len__(self):
+        return len(self.tasks)
+
+    def __getitem__(self, idx):
+        task = self.tasks[idx]
+        text = task.question
+        text += wrap_with_special_tokens(f"{task.test_output}", self.tokenizer)
+
+        encoded_text = self.tokenizer.encode_plus(
+            text,
+            add_special_tokens=False,
+            padding="max_length",
+            truncation=True,
+            max_length=16,  # batch中でサイズをそろえるようにとりあえずmax_lengthを指定,batch_encodeを使ったほうがよさそうではあるけど動作しているうちは直さない、https://huggingface.co/docs/transformers/pad_truncation
+            return_attention_mask=True,
+            # return_tensors="np"
+        )
+
+        masked_text, labels = mask_single_token_collater(
+            list(encoded_text["input_ids"]), self.tokenizer
+        )
+
+        return {
+            "input_ids": torch.tensor(masked_text),
+            "labels": torch.tensor(labels),
+            "attention_mask": torch.tensor(encoded_text["attention_mask"]),
+            # attention_maskはpaddingしている所が不要なので、使用する。
+        }
+
+
+def get_translation_dataloader(
+    tokenizer: PreTrainedTokenizerBase, data_path: str, batch_size=1, shuffle=False, 
+):
+    dataset = ArcTaskDataset(tokenizer, data_path)
+    dataloader = DataLoader(
+
+        dataset, batch_size=batch_size, shuffle=shuffle, drop_last=True
+    )
+    return dataloader
+
+
 class ArcTaskDataModule(L.LightningDataModule):
-    def __init__(self, data_path: str, batch_size: int = 32):
+    def __init__(self, tokenizer: PreTrainedTokenizerBase, batch_size: int, data_path: str):
         super().__init__()
-        self.data_path = data_path
+        self.tokenizer = tokenizer
         self.batch_size = batch_size
-        self.arc_task_set = ArcTaskSet()
-        self.train_tasks = []
-        self.test_tasks = []
+        self.data_path = data_path  
 
     def prepare_data(self):
-        train_tasks = self.arc_task_set.path_to_arc_task(self.data_path+"/training")
-        self.train_tasks = [{"input":str(task.question), "output":str(task.test_output)} for task in train_tasks]
+        pass
 
-        eval_tasks = self.arc_task_set.path_to_arc_task(self.data_path+"/evaluation")
-        self.test_tasks = [{"input":str(task.question), "output":str(task.test_output)} for task in eval_tasks]
-
-    def setup(self, stage: str = None):
-        if stage == 'fit' or stage is None:
-            self.train_dataset = self.train_tasks
-            self.val_dataset = self.test_tasks  
-
-        if stage == 'test' or stage is None:
-            self.test_dataset = self.test_tasks
+    def setup(self, stage: str):
+        self.dl = get_translation_dataloader(
+            self.tokenizer,
+            self.data_path,  
+            batch_size=self.batch_size,
+            shuffle=True,
+        )
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size)
+        return self.dl
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size)
+        return self.dl
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.batch_size)
+        return self.dl
+
+    def predict_dataloader(self):
+        return self.dl

@@ -78,14 +78,21 @@ class Bloom560m(LightningModule):
 
     def training_step(self, batch, batch_idx):
         model_answer_logits = self.model.forward(**batch)
+        train_loss = model_answer_logits.loss
+
+        # あまりにもモデルが学習するとtrain_lossがnan, infになるかもしれない
+        # 学習を安定させるため、その場合は0.0に変更
+        if torch.isnan(train_loss) or torch.isinf(train_loss):
+            train_loss = torch.tensor(0.0, device=train_loss.device)
+
         self.log(
             "train_loss",
-            model_answer_logits.loss,
+            train_loss,
             on_epoch=True,
             prog_bar=True,
         )
         
-        return model_answer_logits.loss
+        return train_loss
 
     def validation_step(self, batch, batch_idx):
         model_answer_logits = self.model.forward(**batch)

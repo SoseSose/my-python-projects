@@ -88,6 +88,54 @@ def mask_data_collater(
     return masked_text, labels
 
 
+def mask_single_token_collater(
+    text_ids: list[int],
+    tokenizer: PreTrainedTokenizerBase,
+    not_learn_id: int = -100,
+) -> tuple[list[int], list[int]]:
+    """
+    トークナイズされたテキストのリストを受け取り、bos_tokenからeos_tokenまでの間の一つだけのトークンをマスクします。
+
+    Args:
+        text_ids (list[int]): トークン化されたテキストのIDリスト。
+        tokenizer (PreTrainedTokenizerBase): トークナイザーオブジェクト。
+        not_learn_id (int, optional): マスクされていないトークンのラベル。デフォルトは-100。
+
+    Raises:
+        ValueError: tokenizerにbos_token_id, eos_token_id, またはmask_token_idが設定されていない場合。
+
+    Returns:
+        tuple[list[int], list[int]]: マスクされたテキストIDのリストと、対応するラベルのリスト。
+    """
+    if tokenizer.bos_token_id is None:
+        raise ValueError("tokenizerにbos_token_idが設定されていません。")
+    if tokenizer.eos_token_id is None:
+        raise ValueError("tokenizerにeos_token_idが設定されていません。")
+    if tokenizer.mask_token_id is None:
+        raise ValueError("tokenizerにmask_token_idが設定されていません。")
+
+    masked_text = text_ids[:]
+    labels = [not_learn_id] * len(text_ids)
+    in_sequence = False
+    maskable_indices = []
+
+    for i, token in enumerate(text_ids):
+        if token == tokenizer.bos_token_id:
+            in_sequence = True
+        else:   
+            if in_sequence:
+                maskable_indices.append(i)
+            if token == tokenizer.eos_token_id:
+                in_sequence = False
+
+    if maskable_indices:
+        mask_index = random.choice(maskable_indices)
+        masked_text[mask_index] = tokenizer.mask_token_id
+        labels[mask_index] = text_ids[mask_index]
+
+    return masked_text, labels
+
+
 class TranslationDataset(Dataset):
     ENGLISH_WORDS = ["dog", "water", "mother", "hello", "tree"]
     SPANISH_WORDS = ["perro", "agua", "madre", "hola", "árbol"]
@@ -114,8 +162,8 @@ class TranslationDataset(Dataset):
             
         )
 
-        masked_text, labels = mask_data_collater(
-            list(encoded_text["input_ids"]), self.tokenizer, prob=1
+        masked_text, labels = mask_single_token_collater(
+            list(encoded_text["input_ids"]), self.tokenizer
         )
 
         return {

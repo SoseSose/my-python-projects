@@ -14,7 +14,7 @@ def get_trainer():
     early_stopping = EarlyStopping(
         monitor="val_loss",
         min_delta=0.03,
-        patience=5,
+        patience=10,
         verbose=True,
         mode="min",
     )
@@ -81,10 +81,5 @@ class MLFlowExperimentManager:
         
         return self.run.__exit__(exc_type, exc_val, exc_tb)
     
-
-def mlflow_evaluator(model:LightningModule, dataloader:DataLoader):
-    for data in dataloader:
-        model.validation_step(data)
-        mlflow.log()
 
     
