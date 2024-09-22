@@ -1,10 +1,8 @@
 from pathlib import Path
 import mlflow
 import sqlite3
-from lightning import LightningModule, Trainer
+from lightning import Trainer
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
-from lightning.pytorch.loggers import MLFlowLogger
-import shutil
 from torch.utils.data import DataLoader
 import uuid
 
@@ -36,10 +34,7 @@ def get_trainer(ckpt_path: str):
 
     trainer = Trainer(
         callbacks=[early_stopping, checkpoint_callback],
-        # callbacks=[early_stopping],
         logger=False,  # ログにはMLflowを使用するためFalse
-        # logger=logger,
-        # enable_checkpointing=False,  # チェックポイントにはMLflowを使用するためFalse
         max_epochs=30,
         max_time={"hours": 3},
         accelerator="gpu",
@@ -77,9 +72,7 @@ class MLFlowExperimentManager:
     def _start_run(self):
         mlflow.pytorch.autolog(
             log_models=False,  # Trueにすると最後の状態のモデルが保存される.今回は最後の状態ではなく,metricが良い状態のcheckpointを使用するためFalse
-            checkpoint=False,
-            # checkpoint_monitor="val_loss",
-            # checkpoint_mode="min",
+            checkpoint=False,#pytorch lighningのcheckpointを使用するのでFalse
         )
         return mlflow.start_run(
             run_name=self.RUN_NAME,
