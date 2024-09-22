@@ -643,7 +643,9 @@ class ArcTaskDataset(torch.utils.data.Dataset):
             add_special_tokens=False,
             padding="max_length",
             truncation=True,
-            max_length=100,  # batch中でサイズをそろえるようにとりあえずmax_lengthを指定,batch_encodeを使ったほうがよさそうではあるけど動作しているうちは直さない、https://huggingface.co/docs/transformers/pad_truncation
+            max_length=900, 
+            #arcは900(30x30)にするべきだがメモリエラーの可能性とbloom560mのトークンサイズを超える可能性あり。
+            # batch中でサイズをそろえるようにとりあえずmax_lengthを指定,batch_encodeを使ったほうがよさそうではあるけど動作しているうちは直さない、https://huggingface.co/docs/transformers/pad_truncation
             return_attention_mask=True,
             # return_tensors="np"
         )

@@ -72,6 +72,7 @@ class Bloom560m(LightningModule):
                 **asdict(Bloom560m_params()),
             )
             self.model.save_pretrained(model_save_path)
+        self.save_hyperparameters()
 
     def forward(self, batch):
         return self.model.forward(**batch)
@@ -99,12 +100,15 @@ class Bloom560m(LightningModule):
         self.log("val_loss", model_answer_logits.loss)
 
     def test_step(self, batch, batch_idx) -> dict[str, Any]:
+        
         model_answer_logits = self.model.forward(**batch)
         self.log("test_loss", model_answer_logits.loss)
+        return model_answer_logits.loss
 
         predictions = torch.argmax(model_answer_logits.logits, dim=-1)
 
-        not_mask_positions = batch["input_ids"] != self.tokenizer.mask_token_id
+        not_mask_positions = torch.where(batch["input_ids"] != self.tokenizer.mask_token_id, 1, 0)
+        print(not_mask_positions)
 
         # maskされていない部分のみで正解率を計算するため、mask_positionsが1のときのみpredictionsとbatch["labels"]を比較する
         predicted_labels = predictions[not_mask_positions]
