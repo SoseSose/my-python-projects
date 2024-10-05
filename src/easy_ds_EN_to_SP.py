@@ -1,7 +1,7 @@
 # %%
 from datasets import Dataset
 from torch.utils.data import DataLoader
-from transformers import PreTrainedTokenizerBase
+from play_transformer import PreTrainedTokenizerBase
 from lightning import LightningDataModule
 
 INSTRUCTION_TEMPLATE_BASE = "\n\n### Human:"
@@ -119,7 +119,7 @@ def get_masked_ds(tokenizer):
 
 
 if __name__ == "__main__":
-    from transformers import AutoTokenizer
+    from play_transformer import AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-560m")
     print(tokenizer.special_tokens_map)

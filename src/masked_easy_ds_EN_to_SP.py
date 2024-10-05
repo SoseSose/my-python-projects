@@ -1,7 +1,7 @@
 import random
 import torch
 from torch.utils.data import DataLoader, Dataset
-from transformers import AutoTokenizer, PreTrainedTokenizerBase
+from play_transformer import AutoTokenizer, PreTrainedTokenizerBase
 from lightning import LightningDataModule
 
 

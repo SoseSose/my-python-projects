@@ -6,7 +6,7 @@ from typing import Any
 import torch
 from lightning import LightningModule
 from torch.optim import SGD, AdamW, Optimizer
-from transformers import (
+from play_transformer import (
     AutoModelForCausalLM,
     AutoTokenizer,
     get_linear_schedule_with_warmup,
