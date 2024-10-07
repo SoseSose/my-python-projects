@@ -12,7 +12,7 @@ import pytest
 import lightning as L
 import torch
 from torch.utils.data import DataLoader
-from play_transformer import PreTrainedTokenizerBase
+from small_trsfmr_plan.modules import PreTrainedTokenizerBase
 
 from data_process.arc.const import ArcConst
 
