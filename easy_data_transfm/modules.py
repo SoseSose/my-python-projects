@@ -31,22 +31,6 @@ class RotaryPositionalEncoding(nn.Module):
         return x
 
 
-class PositionalEncoding(nn.Module):
-    def __init__(self, mbed_dim, max_len=5000):
-        super().__init__()
-        self.encoding = torch.zeros(max_len, mbed_dim)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(
-            torch.arange(0, mbed_dim, 2).float() * (-math.log(10000.0) / mbed_dim)
-        )
-        self.encoding[:, 0::2] = torch.sin(position * div_term)
-        self.encoding[:, 1::2] = torch.cos(position * div_term)
-        self.encoding = self.encoding.unsqueeze(0)
-
-    def forward(self, x):
-        return x + self.encoding[:, : x.size(1), :].to(x.device)
-
-
 class QKLayerNorm(nn.Module):
     def __init__(self, head_dim):
         super().__init__()
