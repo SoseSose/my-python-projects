@@ -8,6 +8,7 @@ mlruns/
 results/
 model-checkpoints/
 lightning_logs/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

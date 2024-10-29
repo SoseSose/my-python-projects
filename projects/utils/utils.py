@@ -1,9 +1,8 @@
-# %%
 import random
+
 import numpy as np
 import torch
-from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
-
+from pynvml import nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo, nvmlInit
 
 def fix_random_seed(seed=42):
     """

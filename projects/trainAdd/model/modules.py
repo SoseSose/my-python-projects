@@ -74,9 +74,9 @@ class MultiHeadAttention(nn.Module):
         #ropeはq,kに対して行う
         q, k = self.q_layernorm(q), self.k_layernorm(k)
 
-        # if attn_mask is not None:
-        #     attn_mask = attn_mask.unsqueeze(1).unsqueeze(1)  
-        #     attn_mask = attn_mask.expand_as(q)#[B, H, T, T]
+        if attn_mask is not None:
+            attn_mask = attn_mask.unsqueeze(1).unsqueeze(1)  
+            attn_mask = attn_mask.expand_as(q)#[B, H, T, T]
 
         output =torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask)
         #flash attentionを使うことも考える。今のpytorch実装ではmaskがあるとflash attentionは使われない。https://zenn.dev/nhandsome/articles/388b2ebb57d5d1参照

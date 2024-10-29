@@ -13,7 +13,7 @@ def run_training():
 
     test_data_module = ArcTaskDataModule(tokenizer=model.tokenizer, data_path="dataset/Selective-Arc/original_arc/training", batch_size=1)
     # test_data_module = MaskedEasyEnToSpDM(tokenizer=model.tokenizer, batch_size=1)
-    ckpt_path = "result/checkpoints"
+    ckpt_path = "logs/checkpoints"
     trainer, check_point_id = get_trainer(ckpt_path=ckpt_path)
     
     print("start training")

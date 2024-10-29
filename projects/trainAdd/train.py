@@ -38,7 +38,7 @@ def main():
         lr_scheduler=lr_scheduler,
     )
     trainer = Trainer(
-        max_epochs=10,
+        max_epochs=1,
         accelerator="cpu",
     )
     trainer.fit(model, datamodule=dm)
