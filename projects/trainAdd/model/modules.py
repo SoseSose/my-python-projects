@@ -176,7 +176,7 @@ class IndependentAdamW(optim.Optimizer):
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super(IndependentAdamW, self).__init__(params, defaults)
 
-    def step(self, closure=None):
+    def step(self, closure=None): # type: ignore
         loss = None
         if closure is not None:
             loss = closure()

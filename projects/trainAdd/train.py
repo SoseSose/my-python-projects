@@ -1,13 +1,13 @@
-from pytorch_lightning import Trainer
 import torch
 from data_proc.datamodule import 足し算ドリルDM
 from model.lightning_model import GPTLightningModel
 from model.gpt import GPT
 from model.modules import CosineAnnealingLR, IndependentAdamW
-
+from my_utils.mlflow_expriment_manage import MLFlowExperimentManager
 # import os
 # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-#1なら同期実行されるのでデバッグがしやすい。
+# 1なら同期実行されるのでデバッグがしやすい。
+
 
 def main():
     dm = 足し算ドリルDM(batch_size=4, seq_len=16)
@@ -37,13 +37,17 @@ def main():
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
     )
-    trainer = Trainer(
-        max_epochs=1,
-        accelerator="cpu",
-    )
-    trainer.fit(model, datamodule=dm)
+    # trainer = Trainer(
+    #     max_epochs=1,
+    #     accelerator="gpu",
+    # )
+    trainer, checkpoint_id = get_trainer("logs/checkpoints")
+
+    manager = MLFlowExperimentManager()
+    with manager:
+        trainer.fit(model, datamodule=dm)
+    #     trainer.fit(model, datamodule=dm)
 
 
 if __name__ == "__main__":
-
     main()

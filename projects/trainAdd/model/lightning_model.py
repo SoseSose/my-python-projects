@@ -1,9 +1,8 @@
 from model.gpt import GPT
 from model.modules import IndependentAdamW, CosineAnnealingLR
 import torch
-from typing import Any
 from torch.optim import Optimizer
-from pytorch_lightning import LightningModule
+from lightning import LightningModule
 
 
 class GPTLightningModel(LightningModule):
@@ -18,37 +17,41 @@ class GPTLightningModel(LightningModule):
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
     
-    def forward(self, token_ids: torch.Tensor, mask: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    def forward(self, token_ids: torch.Tensor, mask: torch.Tensor, targets: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor|None]:
         return self.model.forward(token_ids, mask, targets)
 
-    def configure_optimizers(self) -> Optimizer:
+    def configure_optimizers(self) -> tuple[list[Optimizer], list[CosineAnnealingLR]]:
         return [self.optimizer], [self.lr_scheduler]
+
 
     def training_step(self, batch, batch_idx):
         logits, loss = self.model.forward(**batch)
 
         # あまりにもモデルが学習するとtrain_lossがnan, infになるかもしれない
         # 学習を安定させるため、その場合は0.0に変更
-        if torch.isnan(loss) or torch.isinf(loss):
-            loss = torch.tensor(0.0, device=loss.device)
+        if isinstance(loss, torch.Tensor):
+            if torch.isnan(loss) or torch.isinf(loss):
+                loss = torch.tensor(0.0, device=loss.device)
 
-        self.log(
-            "train_loss",
-            loss,
-            on_epoch=True,
-            prog_bar=True,
-        )
+            self.log(
+                "train_loss",
+                loss,
+                on_epoch=True,
+                prog_bar=True,
+            )
 
-        return loss
+            return loss
 
     def validation_step(self, batch, batch_idx):
         logits, loss = self.model.forward(**batch)
-        self.log("val_loss", loss)
+        if isinstance(loss, torch.Tensor):
+            self.log("val_loss", loss)
 
-    def test_step(self, batch, batch_idx) -> dict[str, Any]:
+    def test_step(self, batch, batch_idx):
         logits, loss = self.model.forward(**batch)
-        self.log("test_loss", loss)
-        return loss
+        if isinstance(loss, torch.Tensor):
+            self.log("test_loss", loss)
+            return loss
 
 
 if __name__ == "__main__":

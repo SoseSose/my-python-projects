@@ -1,8 +1,14 @@
 import os
+
+from typing import Optional
 import chardet
 from pathlib import Path
 
-def check_file_encoding(file_path: Path) -> tuple[str, str, float]:
+"""
+このファイルは、ファイルのエンコーディングをチェックし、UTF-8以外のエンコーディングを持つファイルを検出するためのユーティリティを提供します。
+"""
+
+def check_file_encoding(file_path: Path) -> tuple[str, Optional[str], float]:
     """
     ファイルのエンコーディングを検出する
 
@@ -18,8 +24,8 @@ def check_file_encoding(file_path: Path) -> tuple[str, str, float]:
         return str(file_path), result['encoding'], result['confidence']
 
 def find_non_utf8_files(directory: str | Path, 
-                       exclude_dirs: set[str] = None,
-                       exclude_extensions: set[str] = None) -> list[tuple[str, str, float]]:
+                       exclude_dirs: Optional[set[str]] = None,
+                       exclude_extensions: Optional[set[str]] = None) -> list[tuple[str, str, float]]:
     """
     指定されたディレクトリ以下のUTF-8以外でエンコードされているファイルを探す
 
