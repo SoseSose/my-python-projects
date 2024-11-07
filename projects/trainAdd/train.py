@@ -4,6 +4,7 @@ from model.lightning_model import GPTLightningModel
 from model.gpt import GPT
 from model.modules import CosineAnnealingLR, IndependentAdamW
 from my_utils.mlflow_expriment_manage import MLFlowExperimentManager
+from train_manage import get_trainer
 # import os
 # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 # 1なら同期実行されるのでデバッグがしやすい。
@@ -21,7 +22,6 @@ def main():
         seq_len=dm.ds.seq_len,
         dropout=0.1,
     )
-    # optimizer = IndependentAdamW(gpt.parameters(), lr=1e-3)
     optimizer = torch.optim.AdamW(gpt.parameters(), lr=1e-3)
     lr_scheduler = CosineAnnealingLR(
         optimizer,
@@ -37,16 +37,11 @@ def main():
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
     )
-    # trainer = Trainer(
-    #     max_epochs=1,
-    #     accelerator="gpu",
-    # )
     trainer, checkpoint_id = get_trainer("logs/checkpoints")
 
     manager = MLFlowExperimentManager()
     with manager:
         trainer.fit(model, datamodule=dm)
-    #     trainer.fit(model, datamodule=dm)
 
 
 if __name__ == "__main__":
