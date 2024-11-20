@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+import functools
+import random
+import shutil
 import torch
 from torch.utils.data import Dataset
 from pathlib import Path
@@ -49,21 +53,201 @@ class Tokenizer:
         return "".join([self.int_to_str[i] for i in ints])
 
 
+# if __name__ == "__main__":
+#     from pprint import pprint
+
+#     text = "123456789"
+#     tokenizer = Tokenizer(text)
+#     encoded = tokenizer.encode(text)
+#     pprint(encoded)
+#     causal_data = tokenizer.make_causal_data(encoded, 13)
+#     pprint(causal_data)
+
+#     assert len(causal_data["token_ids"]) == len(causal_data["mask"]) == len(causal_data["target"])
+
+
+def get_unique_randints_from_n_digit(n_digit: int, sample_rate: float) -> list[int]:
+    unique_numbers = set()
+
+    start = 10 ** (n_digit - 1)
+    stop = 10**n_digit - 1
+    print(f"start: {start}, stop: {stop}, sample_rate: {sample_rate}")
+
+    while len(unique_numbers) < int((stop - start) * sample_rate):
+        num = random.randint(start, stop)
+        unique_numbers.add(num)
+
+    return list(unique_numbers)
+
+
+@dataclass
+class 足し算生成桁数と確率:
+    digit1: int
+    digit2: int
+    sample_rate1: float
+    sample_rate2: float
+
+
+def 足し算の文字列生成(data: 足し算生成桁数と確率) -> str:
+    digit1 = data.digit1
+    digit2 = data.digit2
+    sample_rate1 = data.sample_rate1
+    sample_rate2 = data.sample_rate2
+
+    digit1_sampled = get_unique_randints_from_n_digit(digit1, sample_rate1)
+    digit2_sampled = get_unique_randints_from_n_digit(digit2, sample_rate2)
+
+    sample_num = len(digit1_sampled) * len(digit2_sampled)
+    print(f"{digit1}桁+{digit2}桁のサンプル数: {sample_num}")
+    if sample_num > 10000:
+        raise ValueError("サンプル数が多すぎる")
+
+    adding_strings = ""
+    for i in digit1_sampled:
+        for j in digit2_sampled:
+            ques_part = f"{i}+{j}="
+            ans_part = f"{bs_tok}{i+j}{es_tok}"
+            adding_strings += f"{ques_part}{ans_part}\n"
+
+            # 交換法則を学習させるため、入れ替えた値も書き込み
+            ques_part = f"{j}+{i}="
+            ans_part = f"{bs_tok}{j+i}{es_tok}"
+            adding_strings += f"{ques_part}{ans_part}\n"
+    return adding_strings
+
+
+class 足し算データ生成:
+    def __init__(self, data_path: Path):
+        self.data_path = data_path
+
+    def write_files(self, data: 足し算生成桁数と確率):
+        adding_strings = 足し算の文字列生成(data)
+        if not self.data_path.exists():
+            self.data_path.mkdir(parents=True, exist_ok=True)
+
+        with open(self.data_path / f"{data.digit1}桁{data.digit2}桁.txt", "w") as f:
+            f.write(adding_strings)
+
+
+def 桁数の内挿(dir_path: str):
+    """
+    桁数の内挿汎化について
+    1,2,4,6桁の足し算を学習させて3,5,7桁の足し算が出来るか検証する
+    1桁 - 9 * 9= 約100サンプルある。原子的な演算なのですべてのサンプルをデータセットに含める。
+    1桁+2桁 or 2桁+1桁 - 9 * 99 * 2=約2000サンプルある。原子的な演算なのですべてのサンプルをデータセットに含める。
+    2桁-99*99=約10000サンプル。30%をデータセットに含める。
+    """
+
+    data_path = Path(dir_path) / "桁数の内挿"
+    if not data_path.exists():
+        data_path.mkdir(parents=True, exist_ok=True)
+
+    train_path = data_path / "train"
+    if train_path.exists():
+        shutil.rmtree(train_path)
+
+    test_path = data_path / "test"
+    if test_path.exists():
+        shutil.rmtree(test_path)
+
+    # train_write_path = functools.partial(write_file, train_path)
+    train_data_gen = 足し算データ生成(train_path)
+
+    gen_param = [
+        [1, 1, 1.0, 1.0],
+        [2, 1, 1.0, 1.0],
+        [2, 2, 0.3, 0.3],
+        [4, 1, 0.01, 1.0],
+        [4, 2, 0.01, 0.1],
+        [4, 4, 3e-3, 3e-3],
+        [6, 1, 1e-4, 1.0],
+        [6, 2, 1e-4, 0.1],
+        [6, 4, 1e-4, 1e-3],
+        [6, 6, 3e-5, 3e-5],
+    ]
+    for param in gen_param:
+        train_data_gen.write_files(足し算生成桁数と確率(*param))
+
+    gen_param = [
+        [3, 1, 0.1, 1.0],
+        [3, 2, 0.1, 0.1],
+        [3, 3, 0.01, 0.01],
+        [5, 1, 1e-4, 1.0],
+        [5, 2, 1e-4, 0.1],
+        [5, 3, 1e-4, 0.01],
+        [5, 4, 1e-4, 1e-3],
+        [5, 5, 1e-4, 1e-4],
+    ]
+
+    test_data_gen = 足し算データ生成(test_path)
+    for param in gen_param:
+        test_data_gen.write_files(足し算生成桁数と確率(*param))
+
+
 if __name__ == "__main__":
-    from pprint import pprint
+    桁数の内挿("dataset/")
 
-    text = "123456789"
-    tokenizer = Tokenizer(text)
-    encoded = tokenizer.encode(text)
-    pprint(encoded)
-    causal_data = tokenizer.make_causal_data(encoded, 13)
-    pprint(causal_data)
 
-    assert (
-        len(causal_data["token_ids"])
-        == len(causal_data["mask"])
-        == len(causal_data["target"])
-    )
+def 桁数の外挿汎化(dir_path: str):
+    """
+    桁数の外挿汎化について
+    1桁、2桁,3桁,4桁の足し算を学習させて5桁の足し算ができるのか
+    """
+
+    data_path = Path(dir_path) / "桁数の外挿汎化"
+    if not data_path.exists():
+        data_path.mkdir(parents=True, exist_ok=True)
+
+    train_path = data_path / "train"
+    if train_path.exists():
+        shutil.rmtree(train_path)
+
+    test_path = data_path / "test"
+    if test_path.exists():
+        shutil.rmtree(test_path)
+
+    gen_param = [
+        [1, 1, 1.0, 1.0],
+        [2, 1, 1.0, 1.0],
+        [2, 2, 0.3, 0.3],
+        [3, 1, 0.1, 1.0],
+        [3, 2, 0.1, 0.1],
+        [3, 3, 0.01, 0.01],
+        [4, 1, 0.01, 1.0],
+        [4, 2, 0.01, 0.1],
+        [4, 3, 3e-3, 0.01],
+        [4, 4, 3e-3, 3e-3],
+    ]
+    train_data_gen = 足し算データ生成(train_path)
+    for param in gen_param:
+        train_data_gen.write_files(足し算生成桁数と確率(*param))
+
+    gen_param = [
+        [5, 1, 1e-4, 1.0],
+        [5, 2, 1e-4, 0.1],
+        [5, 3, 1e-4, 0.01],
+        [5, 4, 1e-4, 1e-3],
+        [5, 5, 1e-4, 1e-4],
+    ]
+    test_data_gen = 足し算データ生成(test_path)
+    for param in gen_param:
+        test_data_gen.write_files(足し算生成桁数と確率(*param))
+
+"""
+項数の内挿汎化
+0~9までの数の足し算を1項の時、2項の時、4項の時、6項の時、8項の時を学習して3,5,7項の時を検証する。1項は原始的な演算として学習しておく。
+項数の外挿汎化
+0~9までの数の足し算を5項まで学習する。
+それとは別に２桁までの足し算は学習しておく。1~9までの数が11項の足し算は最大9×11で99になるのでその演算が出来るようにしておく。
+最後に10項の足し算が出来るのか検証する。
+0~9までの数の足し算がn項ある場合、サンプル数は10^nとなる。
+学習したかの判定について
+対象の演算のなかで
+• 100サンプル
+• 学習に使用していないサンプルで対象の演算サンプル全体の1%
+の数の大きい方を用いて、正答率を検証する。
+正答率が90%以上ならその演算は出来ると見なす。
+"""
 
 
 def 足し算ドリルを生成(dir_path: str, limit_num: int):
