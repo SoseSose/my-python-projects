@@ -1,10 +1,5 @@
-# [build-system] 
-# requires = ["hatchling"]
-# build-backend = "hatchling.build"
-#このビルドツールが悪さをしている。cp932~というエラーを吐く。
-
 [project]
-name = "projects"
+name = "my_python_projects"
 version = "1.0.0"
 readme = "README.md"
 authors = [{ name = "Sose1" }]
@@ -25,6 +20,14 @@ dependencies = [
     "torchvision==0.20.0+cu121",
 ]
 
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+#下記にしないこと.buildツールが日本語パスに対応しておらず,cp932~というエラーを吐く。
+# [build-system] 
+# requires = ["hatchling"]
+# build-backend = "hatchling.build"
+
 [tool.uv.sources]
 torch = { index = "torch-cuda" }
 torchvision = { index = "torch-cuda" }
@@ -44,7 +47,7 @@ addopts = "-vv -s --tb=short"
 #-s  デフォルトだと print 等で標準出力した内容が表示されないので、表示されるよう設定
 #--tb=short デフォルトだとエラートレースが長すぎるので1段階短く設定
 testpaths = "src"
-pythonpath = ["projects/data_process", "projects/trainAdd"]
+# pythonpath = ["projects/data_process", "projects/trainAdd"]
 #PYTHONPATHを設定することでimport errorを防ぐ
 markers = [
     "unit: mark a test as a unit test",
