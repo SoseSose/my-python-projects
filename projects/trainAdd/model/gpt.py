@@ -2,9 +2,10 @@ from typing import Optional, Tuple
 import math
 import torch
 import torch.nn.functional as F
-
 from torch import nn
 from model.modules import EncoderLayer, RMSNorm
+from loguru import logger
+
 
 
 class GPT(nn.Module):
@@ -28,6 +29,7 @@ class GPT(nn.Module):
         dropout: float,
     ):
         super().__init__()
+
 
         self.n_layer = n_layer
         self.embd = nn.Embedding(vocab_size, n_embd)

@@ -42,6 +42,7 @@ def main():
     manager = MLFlowExperimentManager()
     with manager:
         trainer.fit(model, datamodule=dm)
+         
 
 
 if __name__ == "__main__":

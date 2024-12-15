@@ -35,14 +35,14 @@ name = "torch-cuda"
 url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
-[tool.uv.workspace]
-members = ["projects/utils"]
 
 [tool.pytest.ini_options]
-
 minversion = "6.0"
 python_files = "*.py"
-addopts = "-vv -s "
+addopts = "-vv -s --tb=short"
+#-vv  デフォルトだと出力エラーが省略される場合があるので、不自由ないくらいに出力されるよう設定しています
+#-s  デフォルトだと print 等で標準出力した内容が表示されないので、表示されるよう設定
+#--tb=short デフォルトだとエラートレースが長すぎるので1段階短く設定
 testpaths = "src"
 pythonpath = ["projects/data_process", "projects/trainAdd"]
 #PYTHONPATHを設定することでimport errorを防ぐ
@@ -52,7 +52,6 @@ markers = [
 ]
 
 [tool.pyright]
-
 typeCheckingMode = "standard"
 # settings.jsonにも設定できるがこちらが優先される模様
 venvPath = "." # basePath
