@@ -1,10 +1,10 @@
 import torch
 from data_proc.datamodule import 足し算ドリルDM
-from model.lightning_model import GPTLightningModel
-from model.gpt import GPT
-from model.modules import CosineAnnealingLR, IndependentAdamW
+from my_utils.model.lightning_model import GPTLightningModel
+from my_utils.model.gpt import GPT
+from my_utils.model.modules import CosineAnnealingLR, IndependentAdamW
 from my_utils.mlflow_expriment_manage import MLFlowExperimentManager
-from train_manage import get_trainer
+from trainAdd.train_manage import get_trainer
 # import os
 # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 # 1なら同期実行されるのでデバッグがしやすい。
