@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn.functional as F
 from torch import nn
-from model.modules import EncoderLayer, RMSNorm
+from my_utils.model.modules import EncoderLayer, RMSNorm
 from loguru import logger
 
 
