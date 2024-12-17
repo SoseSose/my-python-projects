@@ -14,7 +14,8 @@ dependencies = [
     "mlflow>=2.17.1",
     "pynvml>=11.5.3",
     "pyperclip>=1.9.0",
-    "pytest>=8.3.3",
+    "pytest-profiling>=1.8.1",
+    "pytest>=8.3.4",
     "torch==2.5.0+cu121",
     "torchtune>=0.3.1",
     "torchvision==0.20.0+cu121",
@@ -38,20 +39,28 @@ name = "torch-cuda"
 url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 python_files = "*.py"
-addopts = "-vv -s --tb=short"
+python_functions = ["*テスト", "テスト*", "*test"]
+#一部ファイルでtest_*という関数名があるので、これは使わないように
+
+addopts = "-vv -s --tb=short --durations=0 --ignore=__pycache__"
 #-vv  デフォルトだと出力エラーが省略される場合があるので、不自由ないくらいに出力されるよう設定しています
 #-s  デフォルトだと print 等で標準出力した内容が表示されないので、表示されるよう設定
 #--tb=short デフォルトだとエラートレースが長すぎるので1段階短く設定
-testpaths = "src"
+#--durations=0: すべてのテストの実行時間を表示
+
+# testpaths = "src"
+# pythonpath = ["."]
 # pythonpath = ["projects/data_process", "projects/trainAdd"]
 #PYTHONPATHを設定することでimport errorを防ぐ
 markers = [
-    "unit: mark a test as a unit test",
-    "integration: mark a test as an integration test",
+    # "unit: mark a test as a unit test",
+    # "integration: mark a test as an integration test",
+    "small: mark a test as a small test",
+    "medium: mark a test as a medium test",
+    "large: mark a test as a large test",
 ]
 
 [tool.pyright]
@@ -59,5 +68,6 @@ typeCheckingMode = "standard"
 # settings.jsonにも設定できるがこちらが優先される模様
 venvPath = "." # basePath
 venv = ".venv" # basePathから指定する
+
 [tool.ruff]
 line-length = 120

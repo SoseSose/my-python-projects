@@ -1,10 +1,12 @@
-from dataclasses import dataclass
 import random
 import shutil
-import torch
-from torch.utils.data import Dataset
+from dataclasses import dataclass
 from pathlib import Path
-import torch.nn.functional as F
+
+import torch
+from torch import Tensor
+from torch.nn import functional as F
+from torch.utils.data import Dataset
 
 # 1文字が1トークンにencodeされるとして実装している
 # もしbyteベースのencodeにする際は要変更
@@ -31,7 +33,7 @@ class Tokenizer:
         ints = [self.str_to_int[c] for c in val]
         return torch.tensor(ints, dtype=torch.long)
 
-    def make_causal_data(self, token_ids: torch.Tensor, seq_len: int) -> dict:
+    def make_causal_data(self, token_ids: Tensor, seq_len: int) -> dict:
         original_len = len(token_ids)
 
         # 最後のtokenを除いてseq_lenまでpadする
@@ -52,17 +54,17 @@ class Tokenizer:
         return "".join([self.int_to_str[i] for i in ints])
 
 
-# if __name__ == "__main__":
-#     from pprint import pprint
+def テスト_tokenizer():
+    from pprint import pprint
 
-#     text = "123456789"
-#     tokenizer = Tokenizer(text)
-#     encoded = tokenizer.encode(text)
-#     pprint(encoded)
-#     causal_data = tokenizer.make_causal_data(encoded, 13)
-#     pprint(causal_data)
+    text = "123456789"
+    tokenizer = Tokenizer(text)
+    encoded = tokenizer.encode(text)
+    pprint(encoded)
+    causal_data = tokenizer.make_causal_data(encoded, 13)
+    pprint(causal_data)
 
-#     assert len(causal_data["token_ids"]) == len(causal_data["mask"]) == len(causal_data["target"])
+    assert len(causal_data["token_ids"]) == len(causal_data["mask"]) == len(causal_data["target"])
 
 
 def n桁のランダム整数生成(n_digit: int, sample_rate: float) -> list[int]:
@@ -122,9 +124,6 @@ def 二項n桁の足し算の文字列生成(data: 足し算生成桁数と確�
     return rslt
 
 
-    
-
-
 class 足し算データ生成:
     def __init__(self, data_path: Path):
         self.data_path = data_path
@@ -136,7 +135,7 @@ class 足し算データ生成:
 
         with open(self.data_path / f"{gen_parm.digit1}桁{gen_parm.digit2}桁.txt", "w") as f:
             f.write(adding_strings)
-    
+
     def any_term_write_files(self, term_num: int, sample_rate: float):
         adding_strings = 多項の足し算の文字列生成(term_num, sample_rate)
         if not self.data_path.exists():
@@ -201,7 +200,7 @@ def 桁数の内挿(dir_path: str):
         test_data_gen.any_digitwrite_files(足し算生成桁数と確率(*param))
 
 
-if __name__ == "__main__":
+def テスト_桁数の内挿():
     桁数の内挿("dataset/")
 
 
@@ -252,9 +251,9 @@ def 桁数の外挿汎化(dir_path: str):
 
 
 def 多項の足し算の文字列生成(term_num: int, sample_rate: float) -> str:
-    if term_num <2:
+    if term_num < 2:
         raise ValueError("項数は2以上である必要がある")
-    
+
     randints = n桁のランダム整数生成(term_num, sample_rate)
 
     rslt = ""
@@ -269,6 +268,7 @@ def 多項の足し算の文字列生成(term_num: int, sample_rate: float) -> s
 
     return rslt
 
+
 def 項数の内挿汎化(dir_path: str):
     data_path = Path(dir_path) / "項数の内挿汎化"
     if not data_path.exists():
@@ -280,7 +280,7 @@ def 項数の内挿汎化(dir_path: str):
     test_path = data_path / "test"
     if test_path.exists():
         shutil.rmtree(test_path)
-    
+
     train_gen_param = [
         [1, 1.0],
         [2, 1.0],
@@ -298,7 +298,7 @@ def 項数の内挿汎化(dir_path: str):
     ]
     for param in train_gen_param2:
         train_generator.any_digitwrite_files(足し算生成桁数と確率(*param))
-    
+
     test_gen_param = [
         [3, 0.1],
         [5, 1e-4],
@@ -307,6 +307,7 @@ def 項数の内挿汎化(dir_path: str):
     test_generator = 足し算データ生成(test_path)
     for param in test_gen_param:
         test_generator.any_term_write_files(param[0], param[1])
+
 
 def 項数の外挿汎化(dir_path: str):
     """
@@ -343,7 +344,6 @@ def 項数の外挿汎化(dir_path: str):
     train_generator = 足し算データ生成(train_path)
     for param in train_gen_param:
         train_generator.any_term_write_files(param[0], param[1])
-    
 
     test_gen_param = [
         [6, 1e-3],
@@ -352,7 +352,6 @@ def 項数の外挿汎化(dir_path: str):
     test_generator = 足し算データ生成(test_path)
     for param in test_gen_param:
         test_generator.any_term_write_files(param[0], param[1])
-
 
 
 def 足し算ドリルを生成(dir_path: str, limit_num: int):
@@ -364,7 +363,7 @@ def 足し算ドリルを生成(dir_path: str, limit_num: int):
                 f.write(f"{ques_part}{ans_part}\n")
 
 
-if __name__ == "__main__":
+def テスト_足し算ドリルを生成():
     足し算ドリルを生成("dataset/", 10)
 
 
@@ -398,7 +397,7 @@ def make_causal_text(text: str) -> list[str]:
     return text_list
 
 
-if __name__ == "__main__":
+def テスト_make_causal_text():
     causal_text = make_causal_text("1+2=<3>")
     assert causal_text[0] == "1+2=<3"
     assert causal_text[1] == "1+2=<3>"
@@ -431,9 +430,8 @@ class 足し算ドリル(Dataset):
         return causal_data
 
 
-if __name__ == "__main__":
+def テスト_足し算ドリル():
     from pprint import pprint
-
     dataset = 足し算ドリル(15)
     for data in dataset:
         pprint(data)
