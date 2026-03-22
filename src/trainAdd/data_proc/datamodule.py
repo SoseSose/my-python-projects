@@ -1,10 +1,13 @@
-import torch
+from torch import long as torch_long
+from torch import bool as torch_bool
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from loguru import logger
 
 from trainAdd.data_proc.data_make import 足し算ドリル
 
+import torch
+torch.__config__.parallel_info()
 
 class 足し算ドリルDM(LightningDataModule):
     def __init__(self, batch_size: int, seq_len: int):
@@ -49,8 +52,8 @@ def テスト_batch_type():
         assert batch["token_ids"].shape == (batch_size, seq_len), "token_ids shape mismatch"
         assert batch["mask"].shape == (batch_size, seq_len), "mask shape mismatch"
         assert batch["targets"].shape == (batch_size, seq_len), "targets shape mismatch"
-        assert batch["token_ids"].dtype == torch.long, "token_ids dtype mismatch"
-        assert batch["mask"].dtype == torch.bool, "mask dtype mismatch"
-        assert batch["targets"].dtype == torch.long, "targets dtype mismatch"
+        assert batch["token_ids"].dtype == torch_long, "token_ids dtype mismatch"
+        assert batch["mask"].dtype == torch_bool, "mask dtype mismatch"
+        assert batch["targets"].dtype == torch_long, "targets dtype mismatch"
         break
 

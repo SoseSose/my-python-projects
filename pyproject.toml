@@ -6,20 +6,26 @@ authors = [{ name = "Sose1" }]
 license = { text = "MIT License" }
 requires-python = ">=3.10.9"
 
+
 dependencies = [
     "chardet>=5.2.0",
     "lightning>=2.4.0",
     "loguru-config>=0.1.0",
     "loguru>=0.7.2",
     "mlflow>=2.17.1",
+    "openai>=1.60.0",
+    "pydantic>=2.10.5",
     "pynvml>=11.5.3",
     "pyperclip>=1.9.0",
     "pytest-profiling>=1.8.1",
     "pytest>=8.3.4",
+    "toml>=0.10.2",
     "torch==2.5.0+cu121",
     "torchtune>=0.3.1",
     "torchvision==0.20.0+cu121",
+    "tuna>=0.5.11",
 ]
+
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -29,15 +35,18 @@ build-backend = "setuptools.build_meta"
 # requires = ["hatchling"]
 # build-backend = "hatchling.build"
 
+
 [tool.uv.sources]
 torch = { index = "torch-cuda" }
 torchvision = { index = "torch-cuda" }
 torchao = { index = "torch-cuda" }
 
+
 [[tool.uv.index]]
 name = "torch-cuda"
 url = "https://download.pytorch.org/whl/cu121"
 explicit = true
+
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -63,11 +72,13 @@ markers = [
     "large: mark a test as a large test",
 ]
 
+
 [tool.pyright]
-typeCheckingMode = "standard"
+typeCheckingMode = "basic"
 # settings.jsonにも設定できるがこちらが優先される模様
 venvPath = "." # basePath
 venv = ".venv" # basePathから指定する
+
 
 [tool.ruff]
 line-length = 120

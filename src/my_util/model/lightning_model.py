@@ -1,5 +1,5 @@
-from my_utils.model.gpt import GPT
-from my_utils.model.modules import IndependentAdamW, CosineAnnealingLR
+from my_util.model.gpt import GPT
+from my_util.model.modules import IndependentAdamW, CosineAnnealingLR
 import torch
 from torch.optim import Optimizer
 from lightning import LightningModule

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 import random
 import shutil
 from loguru import logger
@@ -19,55 +19,60 @@ class 多項足し算パラメータ:
 
 class 足し算生成器:
     def __init__(self):
-        self.bs_tok = "<"  # bos_token
-        self.es_tok = ">"  # eos_token
+        self.開始トークン = "<"
+        self.終了トークン = ">"
 
     def n桁の重複なしランダム整数生成(self, 桁数: int, サンプル割合: float) -> list[int]:
-        unique_numbers = set()
-        start = 10 ** (桁数 - 1)
-        stop = 10**桁数 - 1
-        sample_num = int((stop - start) * サンプル割合)
+        重複なし整数集合 = set()
+        開始値 = 10 ** (桁数 - 1)
+        終了値 = 10**桁数 - 1
+        目標サンプル数 = int((終了値 - 開始値) * サンプル割合)
         
-        if sample_num > 10000:
-            raise ValueError(f"sample_numが大きすぎます: {sample_num}")
+        if 目標サンプル数 > 10000:
+            raise ValueError(f"サンプル数が大きすぎます: {目標サンプル数}")
 
-        while len(unique_numbers) < sample_num:
-            num = random.randint(start, stop)
-            unique_numbers.add(num)
+        while len(重複なし整数集合) < 目標サンプル数:
+            生成数 = random.randint(開始値, 終了値)
+            重複なし整数集合.add(生成数)
 
-        return list(unique_numbers)
+        return list(重複なし整数集合)
 
-    def 二項足し算文字列生成(self, パラメータ: 二項足し算パラメータ) -> str:
-        digit1_sampled = self.n桁の重複なしランダム整数生成(パラメータ.桁数1, パラメータ.サンプル割合1)
-        digit2_sampled = self.n桁の重複なしランダム整数生成(パラメータ.桁数2, パラメータ.サンプル割合2)
+    def 二項n桁足し算文字列生成(self, パラメータ: 二項足し算パラメータ) -> str:
+        第一項候補 = self.n桁の重複なしランダム整数生成(パラメータ.桁数1, パラメータ.サンプル割合1)
+        第二項候補 = self.n桁の重複なしランダム整数生成(パラメータ.桁数2, パラメータ.サンプル割合2)
 
-        sample_num = len(digit1_sampled) * len(digit2_sampled)
-        if sample_num > 10000:
+        総サンプル数 = len(第一項候補) * len(第二項候補)
+        if 総サンプル数 > 10000:
             raise ValueError("サンプル数が多すぎる")
 
         問題リスト = []
-        for i in digit1_sampled:
-            for j in digit2_sampled:
-                問題リスト.append(f"{i}+{j}={self.bs_tok}{i+j}{self.es_tok}")
-                問題リスト.append(f"{j}+{i}={self.bs_tok}{j+i}{self.es_tok}")  # 交換法則学習用
+        for 第一項 in 第一項候補:
+            for 第二項 in 第二項候補:
+                問題リスト.append(
+                    f"{第一項}+{第二項}={self.開始トークン}{第一項+第二項}{self.終了トークン}"
+                )
+                # 交換法則学習用
+                問題リスト.append(
+                    f"{第二項}+{第一項}={self.開始トークン}{第二項+第一項}{self.終了トークン}"
+                )
 
         return "\n".join(問題リスト) + "\n"
 
-    def 多項足し算文字列生成(self, パラメータ: 多項足し算パラメータ) -> str:
+    def 多項一桁足し算文字列生成(self, パラメータ: 多項足し算パラメータ) -> str:
         if パラメータ.項数 < 2:
             raise ValueError("項数は2以上である必要がある")
 
-        randints = self.n桁の重複なしランダム整数生成(パラメータ.項数, パラメータ.サンプル割合)
+        乱数リスト = self.n桁の重複なしランダム整数生成(パラメータ.項数, パラメータ.サンプル割合)
         
         問題リスト = []
-        for one_randint in randints:
-            ans = 0
-            式 = ""
-            for i in str(one_randint):
-                ans += int(i)
-                式 += f"{i}+"
-            式 = 式[:-1]  # 最後の+を削除
-            問題リスト.append(f"{式}={self.bs_tok}{ans}{self.es_tok}")
+        for 乱数 in 乱数リスト:
+            合計値 = 0
+            足し算文字列 = ""
+            for 数字 in str(乱数):
+                合計値 += int(数字)
+                足し算文字列 += f"{数字}+"
+            足し算文字列 = 足し算文字列[:-1]  # 最後の+を削除
+            問題リスト.append(f"{足し算文字列}={self.開始トークン}{合計値}{self.終了トークン}")
 
         return "\n".join(問題リスト) + "\n"
 
@@ -77,36 +82,43 @@ class データセット生成器:
 
     def _ディレクトリ初期化(self, path: Path):
         if path.exists():
-            shutil.rmtree(path)
-        path.mkdir(parents=True, exist_ok=True)
+            確認メッセージ = f"\nディレクトリ {path} は既に存在します。削除しますか？ [y/n]: "
+            回答 = input(確認メッセージ).strip().lower()
+            
+            if 回答 == 'y':
+                logger.info(f"ディレクトリ {path} を削除します")
+                shutil.rmtree(path)
+                path.mkdir(parents=True, exist_ok=True)
+            else:
+                logger.info(f"ディレクトリ {path} をそのまま使用します")
+        else:
+            path.mkdir(parents=True, exist_ok=True)
 
     def 二項足し算ファイル生成(self, dir_path: Path, パラメータリスト: List[二項足し算パラメータ]):
         self._ディレクトリ初期化(dir_path)
         for パラメータ in パラメータリスト:
-            問題文字列 = self.生成器.二項足し算文字列生成(パラメータ)
+            問題文字列 = self.生成器.二項n桁足し算文字列生成(パラメータ)
             with open(dir_path / f"{パラメータ.桁数1}桁{パラメータ.桁数2}桁.txt", "w") as f:
                 f.write(問題文字列)
 
     def 多項足し算ファイル生成(self, dir_path: Path, パラメータリスト: List[多項足し算パラメータ]):
         self._ディレクトリ初期化(dir_path)
         for パラメータ in パラメータリスト:
-            問題文字列 = self.生成器.多項足し算文字列生成(パラメータ)
+            問題文字列 = self.生成器.多項一桁足し算文字列生成(パラメータ)
             with open(dir_path / f"{パラメータ.項数}項.txt", "w") as f:
                 f.write(問題文字列)
 
-def 桁数の汎化データセット生成(base_path: Path, train_params: List[二項足し算パラメータ], test_params: List[二項足し算パラメータ]):
+def 桁数の汎化データセット生成(data_path: Path, train_params: List[二項足し算パラメータ], test_params: List[二項足し算パラメータ]):
     生成器 = 足し算生成器()
     データセット = データセット生成器(生成器)
     
-    data_path = base_path / "桁数の汎化"
     データセット.二項足し算ファイル生成(data_path / "train", train_params)
     データセット.二項足し算ファイル生成(data_path / "test", test_params)
 
-def 項数の汎化データセット生成(base_path: Path, train_params: List[多項足し算パラメータ], test_params: List[多項足し算パラメータ]):
+def 項数の汎化データセット生成(data_path: Path, train_params: List[多項足し算パラメータ], test_params: List[多項足し算パラメータ]):
     生成器 = 足し算生成器()
     データセット = データセット生成器(生成器)
     
-    data_path = base_path / "項数の汎化"
     データセット.多項足し算ファイル生成(data_path / "train", train_params)
     データセット.多項足し算ファイル生成(data_path / "test", test_params)
 
@@ -116,27 +128,81 @@ def main():
     # 桁数の内挿汎化
     train_params = [
         二項足し算パラメータ(1, 1, 1.0, 1.0),
+        二項足し算パラメータ(2, 1, 1.0, 1.0),
         二項足し算パラメータ(2, 2, 0.3, 0.3),
-        # ... 他のパラメータ
+        二項足し算パラメータ(4, 1, 0.01, 1.0),
+        二項足し算パラメータ(4, 2, 0.01, 0.1),
+        二項足し算パラメータ(4, 4, 3e-3, 3e-3),
+        二項足し算パラメータ(6, 1, 1e-4, 1.0),
+        二項足し算パラメータ(6, 2, 1e-4, 0.1),
+        二項足し算パラメータ(6, 4, 1e-4, 1e-3),
+        二項足し算パラメータ(6, 6, 3e-5, 3e-5),
     ]
     test_params = [
-        二項足し算パラメータ(3, 3, 0.1, 0.1),
-        # ... 他のパラメータ
+        二項足し算パラメータ(3, 1, 0.1, 1.0),
+        二項足し算パラメータ(3, 2, 0.1, 0.1),
+        二項足し算パラメータ(3, 3, 0.01, 0.01),
+        二項足し算パラメータ(5, 1, 1e-4, 1.0),
+        二項足し算パラメータ(5, 2, 1e-4, 0.1),
+        二項足し算パラメータ(5, 3, 1e-4, 0.01),
+        二項足し算パラメータ(5, 4, 1e-4, 1e-3),
+        二項足し算パラメータ(5, 5, 1e-4, 1e-4),
     ]
     桁数の汎化データセット生成(base_path / "桁数の内挿汎化", train_params, test_params)
 
+    # 桁数の外挿汎化
+    train_params = [
+        二項足し算パラメータ(1, 1, 1.0, 1.0),
+        二項足し算パラメータ(2, 1, 1.0, 1.0),
+        二項足し算パラメータ(2, 2, 0.3, 0.3),
+        二項足し算パラメータ(3, 1, 0.1, 1.0),
+        二項足し算パラメータ(3, 2, 0.1, 0.1),
+        二項足し算パラメータ(3, 3, 0.01, 0.01),
+        二項足し算パラメータ(4, 1, 0.01, 1.0),
+        二項足し算パラメータ(4, 2, 0.01, 0.1),
+        二項足し算パラメータ(4, 4, 3e-3, 3e-3),
+    ]
+    test_params = [
+        二項足し算パラメータ(5, 1, 1e-4, 1.0),
+        二項足し算パラメータ(5, 2, 1e-4, 0.1),
+        二項足し算パラメータ(5, 3, 1e-4, 0.01),
+        二項足し算パラメータ(5, 4, 1e-4, 1e-3),
+        二項足し算パラメータ(5, 5, 1e-4, 1e-4),
+        二項足し算パラメータ(6, 1, 1e-4, 1.0),
+        二項足し算パラメータ(6, 2, 1e-4, 0.1),
+        二項足し算パラメータ(6, 4, 1e-4, 1e-3),
+        二項足し算パラメータ(6, 6, 3e-5, 3e-5),
+    ]
+    桁数の汎化データセット生成(base_path / "桁数の外挿汎化", train_params, test_params)
+
+    #項数の汎化特性を調べるときは桁数を学習してから行う.
     # 項数の内挿汎化
     train_params_多項 = [
         多項足し算パラメータ(2, 1.0),
         多項足し算パラメータ(4, 0.1),
-        # ... 他のパラメータ
+        多項足し算パラメータ(6, 1e-3),
+        多項足し算パラメータ(8, 1e-5),
     ]
     test_params_多項 = [
         多項足し算パラメータ(3, 0.1),
         多項足し算パラメータ(5, 1e-4),
-        # ... 他のパラメータ
+        多項足し算パラメータ(7, 1e-6),
     ]
     項数の汎化データセット生成(base_path / "項数の内挿汎化", train_params_多項, test_params_多項)
+
+    # 項数の外挿汎化
+    train_params_外挿 = [
+        多項足し算パラメータ(2, 1.0),
+        多項足し算パラメータ(3, 1.0),
+        多項足し算パラメータ(4, 0.1),
+        多項足し算パラメータ(5, 1e-2),
+    ]
+    test_params_外挿 = [
+        多項足し算パラメータ(6, 1e-3),
+        多項足し算パラメータ(7, 1e-4),
+    ]
+    項数の汎化データセット生成(base_path / "項数の外挿汎化", train_params_外挿, test_params_外挿)
+
 
 if __name__ == "__main__":
     main()
